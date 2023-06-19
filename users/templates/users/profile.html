@@ -1,0 +1,92 @@
+{% extends "file_storage/base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<!-- Center the words hello world in a div -->
+
+<div class="content-section-center">
+    <div class="content-section">
+        <div class="media">
+            <!-- Include the image with the source code src="{{ user.profile.image.url }}" and round the corners making -->
+            <!-- the image a circle with the class "rounded-circle" -->
+            <!-- Resize the image so that the whole thing fits -->
+
+            <img src="https://chemstats.s3.amazonaws.com/media/profile_pics/{{ user.profile.image }}" class="mr-3 rounded-circle account-img">
+            
+            <div class="media-body">
+                <h2 class="account-heading">{{ user.username }}</h2>
+                {% if user.profile.group %}
+                    <p class="text-secondary font-weight-bold no-margin">{{ user.profile.group.name }}, {{ user.profile.group.institution }}</p>
+                {% endif %}
+                <p class="text-secondary font-weight-light font-italic no-margin">{{ user.email }}</p>
+                {% if user.profile.group and user.profile.group.admin == user %}
+                    <p class="text-secondary font-weight-light no-margin">Group Admin</p>
+                {% endif %}
+            </div>
+        </div>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <fieldset class="form-group">
+                <legend class="border-bottom">Profile Info</legend>
+                {{ u_form|crispy }}
+                {{ p_form|crispy }}
+            </fieldset>
+            <div class="form-group">
+                <button class="btn btn-outline-info" type="submit">Update</button>
+            </div>
+        </form>
+
+        {% if not user.profile.group %}
+        <fieldset class="form-group">
+            <legend class="border-bottom">
+                Group Admin/PI?
+            </legend>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ admin_verification_form|crispy }}
+                <button class="btn btn-outline-info" type="submit">Request Verification</button>
+            </form>
+        </fieldset>
+        {% endif %}
+    </div>
+
+    {% if user.profile.group and user.profile.group.admin == user %}
+    <div class="content-section">
+        <!-- List current group members -->
+        <h3>Current Group Members</h3>
+        <ul>
+            {% for member in current_group_members %}
+                <li>{{ member.user.username }} - {{ member.user.email }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="content-section">
+        <!-- Add group member -->
+        <form method="POST" class="form-group">
+            {% csrf_token %}
+            <fieldset>
+                <legend class="border-bottom">Add Group Member</legend>
+                {{ agm_form|crispy }}
+            </fieldset>
+            <div class="form-group">
+                <button type="submit" name="add_group_member" class="btn btn-outline-info">Add Member</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="content-section">
+        <!-- Remove group member -->
+        <form method="POST" class="form-group">
+            {% csrf_token %}
+            <fieldset>
+                <legend class="border-bottom">Remove Group Member</legend>
+                {{ rgm_form|crispy }}
+            </fieldset>
+            <div class="form-group">
+                <button type="submit" name="remove_group_member" class="btn btn-outline-info">Remove Member</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}

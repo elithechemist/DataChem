@@ -1,0 +1,227 @@
+{% extends "file_storage/base.html" %}
+{% block content %}
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("DOM is loaded");
+
+        var projectSelect = document.getElementById("project-select");
+
+        // Set the selected project from localStorage after page reload
+        var lastSelectedProject = localStorage.getItem('selectedProject');
+        if (lastSelectedProject) {
+            projectSelect.value = lastSelectedProject;
+        }
+
+        // Function to fetch data and populate table
+        var fetchDataAndPopulateTable = function(projectId) {
+            var form = document.getElementById('update-form');
+            var hiddenInput = document.getElementById('project-id');
+
+            if (form && hiddenInput) {
+                console.log("form and hiddenInput found");
+
+                hiddenInput.value = projectId;
+                form.action = form.action.replace(/\/project\/\d+/, `/project/${projectId}`);
+
+                fetch("{% url 'stats:ajax_get_project_data' '37' %}".replace('37', projectId))
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Fetch data:", data);
+                        var tableBody = document.querySelector('.table tbody');
+                        tableBody.innerHTML = '';
+
+                        data.forEach(entry => {
+                            var tr = document.createElement('tr');
+
+                            // Create a cell for the molecule
+                            var moleculeCell = document.createElement('td');
+                            moleculeCell.textContent = entry.molecule;
+                            tr.appendChild(moleculeCell);
+
+                            // Create input cells for each experimental response
+                            var responseIndex = 0;
+                            for (var key in entry) {
+                                if (key.startsWith('exp_response')) {
+                                    var values = entry[key];
+                                    if (!values) {
+                                        values = [''];
+                                    }
+                                    for (var i = 0; i < values.length; i++) {
+                                        var valueCell = document.createElement('td');
+                                        var input = document.createElement('input');
+                                        input.type = "text";
+                                        input.name = `entry-${entry.molecule}-value-${responseIndex}`;
+                                        input.value = (values[i] !== undefined && values[i] !== null) ? values[i] : '';
+                                        valueCell.appendChild(input);
+                                        tr.appendChild(valueCell);
+                                        responseIndex++;
+                                    }
+                                }
+                            }
+
+                            tableBody.appendChild(tr);
+                        });
+                    });
+            } else {
+                console.error("form or hiddenInput not found");
+            }
+        };
+
+        if (projectSelect) {
+            console.log("projectSelect found");
+            projectSelect.addEventListener("change", function() {
+                var projectId = this.value;
+                console.log(`Project ID: ${projectId}`);
+                
+                // Store the selected project in localStorage
+                localStorage.setItem('selectedProject', projectId);
+
+                fetchDataAndPopulateTable(projectId);
+            });
+
+            // Fetch data and populate table on initial page load
+            fetchDataAndPopulateTable(projectSelect.value);
+        } else {
+            console.error("projectSelect not found");
+        }
+            // Handling Add Column button click
+            var addColumnButton = document.getElementById("addColumn");
+            if (addColumnButton) {
+                console.log("addColumnButton found");
+                addColumnButton.addEventListener("click", function() {
+                    var projectId = document.getElementById("project-id").value;
+                    console.log("Adding column for project ID:", projectId);
+
+                    fetch(`add_column/${projectId}/`, {method: 'POST'})
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log("Response from add column:", data);
+                            if (data.success) {
+                                console.log("Column added successfully");
+                                // Reload the page to reflect the changes
+                                location.reload();
+                            } else {
+                                console.error("Failed to add column");
+                            }
+                        })
+                        .catch(error => console.error("Error in fetch:", error));
+                });
+            } else {
+                console.error("addColumnButton not found");
+            }
+
+            // Handling Remove Column button click
+        var removeColumnButton = document.getElementById("removeColumn");
+        if (removeColumnButton) {
+            console.log("removeColumnButton found");
+            removeColumnButton.addEventListener("click", function() {
+                var projectId = document.getElementById("project-id").value;
+                console.log("Removing column for project ID:", projectId);
+
+                fetch(`remove_column/${projectId}/`, {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Response from remove column:", data);
+                        if (data.success) {
+                            console.log("Column removed successfully");
+                            // Reload the page to reflect the changes
+                            location.reload();
+                        } else {
+                            console.error("Failed to remove column");
+                        }
+                    })
+                    .catch(error => console.error("Error in fetch:", error));
+            });
+        } else {
+            console.error("removeColumnButton not found");
+        }
+        });
+    </script>
+
+    <style>
+        .container {
+            display: flex;
+            width: 100% !important;
+        }
+
+        .sidebar {
+            flex: 0 0 25%;
+            background-color: #f0f0f0;
+            padding: 20px;
+            /* Add any other styles you want for the sidebar */
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            /* Add any styles you want for the main content area */
+        }
+    </style>
+
+    <div class="container"> 
+        <!-- Table -->
+        <div class="main-content">
+            <div class="col-md-10">
+                <form method="POST" id="update-form" action="{% url 'stats:update_values' current_project.id %}">
+                    {% csrf_token %}
+                    <table class="table table-striped table-hover bg-white">
+                        <thead>
+                            <tr>
+                                <th>Molecule Index</th>
+                                {% for _ in response_table.0.exp_response %}
+                                    <th>Data</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in response_table %}
+                                <tr>
+                                    <td>{{ entry.molecule }}</td>
+                                    {% for key, value in entry.items %}
+                                        {% if 'exp_response' in key %}
+                                            {% if value is null %}
+                                                <td>
+                                                    <input type="text" name="entry-{{ forloop.counter0 }}-value" value="">
+                                                </td>
+                                            {% else %}
+                                                {% for val in value %}
+                                                    <td>
+                                                        {% if val is null %}
+                                                            <input type="text" name="entry-{{ forloop.parentloop.counter0 }}-value-{{ forloop.counter0 }}" value="">
+                                                        {% else %}
+                                                            <input type="text" name="entry-{{ forloop.parentloop.counter0 }}-value-{{ forloop.counter0 }}" value="{{ val }}">
+                                                        {% endif %}
+                                                    </td>
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <input type="hidden" id="project-id" name="project_id" value="{{ current_project.id }}">
+                    <input type="submit" value="Update Values">
+                    <input type="button" id="addColumn" value="Add Column">
+                    <input type="button" id="removeColumn" value="Remove Column">
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h5>Projects</h5>
+            <select id="project-select" class="form-control">
+                {% for project in projects %}
+                    <option value="{{ project.id }}" {% if project.id == current_project.id %}selected{% endif %}>{{ project.name }}</option>
+                {% endfor %}
+            </select>
+            <!-- Upload Excel Sheet Button -->
+            <div class="upload-button" style="margin-top: 10px;">
+                <a href="{% url 'stats:upload' %}" class="btn btn-primary">
+                    Upload Excel Sheet
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

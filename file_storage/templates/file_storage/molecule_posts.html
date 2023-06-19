@@ -1,0 +1,131 @@
+{% extends "file_storage/base.html" %}
+{% block content %}
+<div class="post-grid">
+    {% for instance in conformers %}
+        <div class="post-grid-item">
+            <div class="button-bar">
+                <label class="checkbox-label">
+                  <input type="checkbox" class="checkbox" data-conformational-ensemble-id="{{ instance.id }}">
+                  <span class="checkmark"></span>
+                  Add to 
+                  <select class="projectSelect" name="project_id">
+                    {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+            </select>
+                </label>
+            </div>
+            <article class="media content-section">
+                <!-- <img class="rounded-circle article-img" src="{{ instance.user.profile.image.url }}">
+                -->
+                <div class="media-body">
+                    <!--
+                <div class="article-metadata">
+                    <a class="mr-2" href="#">{{ instance.author }}</a>
+                    <small class="text-muted">{{ instance.date|date:"F j, Y" }}</small>
+                </div>
+            -->
+                    <div class="post-image-container">
+                        <svg class="svg-image" viewBox="0 0 100 100">
+                            <image xlink:href="{{ instance.svg_url }}" width="100%" height="100%" />
+                        </svg>
+                    </div>
+                    <div>
+                        <a class='molecule-name' href="{% url 'file_storage:molecule_detail' instance.id %}">{{ instance.molecule_name }}</a>
+                    </div>
+                </div>
+            </article>
+        </div>
+    {% endfor %}
+</div>
+    {% if is_paginated %}
+        {% if page_obj.has_previous %}
+            <a class="btn btn-outline-info mb-4" href="?page=1">First</a>
+            <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}">Next</a>
+            <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+        {% endif %}
+    {% endif %}
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+$(document).ready(function(){
+  console.log("Document is ready!");  // This will print when the page loads and is ready
+
+  $(".projectSelect").change(function() {
+    var selectedValue = $(this).val();
+    $(".projectSelect").each(function() {
+      $(this).val(selectedValue);
+    });
+
+    // AJAX call to get molecules in project
+    $.ajax({
+      type: 'GET',
+      url: "{% url 'file_storage:get_conformational_ensembles_in_project' %}",
+      data: {
+        'project_id': selectedValue,
+      },
+      success: function(response){
+        // Uncheck all checkboxes
+        $('.checkbox').prop('checked', false);
+
+        // Check checkboxes for molecules in the project
+        for (var i = 0; i < response.length; i++) {
+          $('input[data-conformational-ensemble-id="' + response[i] + '"]').prop('checked', true);
+        }
+      },
+      error: function(jqXHR, textStatus, errorThrown){
+        console.log("AJAX request failed");  
+        console.log("Status: " + textStatus);  
+        console.log("Error: " + errorThrown); 
+      }
+    });
+  });
+
+  $('.checkbox').change(function(){
+    console.log("Checkbox has changed!");  // This will print when a checkbox is clicked
+
+    var conformationalEnsembleId = $(this).attr("data-conformational-ensemble-id");
+    var add = $(this).is(':checked');
+    var project_id = $(".projectSelect").val();
+    var url = add ? "{% url 'file_storage:add_conformational_ensemble_to_project' %}" : "{% url 'file_storage:remove_conformational_ensemble_from_project' %}";
+
+    console.log("project_id: " + project_id);
+    console.log("conformational_ensemble_id: " + conformationalEnsembleId);  // This will print the molecule id
+    console.log("add: " + add);  // This will print whether the checkbox is checked or not
+    console.log("url: " + url);  // This will print the url that will be requested
+
+    $.ajax({
+      type: 'POST',
+      url: url,
+      data: {
+        'conformational_ensemble_id': conformationalEnsembleId,
+        'csrfmiddlewaretoken': '{{ csrf_token }}',
+        'project_id': project_id
+      },
+      success: function(response){
+        console.log("AJAX request was successful");  // This will print when the AJAX request is successful
+        console.log(response);  // This will print the response from the AJAX request
+      },
+      error: function(jqXHR, textStatus, errorThrown){
+        console.log("AJAX request failed");  // This will print if the AJAX request fails
+        console.log("Status: " + textStatus);  // This will print the status of the failed AJAX request
+        console.log("Error: " + errorThrown);  // This will print the error message from the failed AJAX request
+      }
+    });
+  });
+});
+</script>
+
+{% endblock content %}

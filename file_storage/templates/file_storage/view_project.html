@@ -1,0 +1,84 @@
+{% extends "file_storage/base.html" %}
+{% block content %}
+<h2 class="text-white">{{ project.name }}</h2>
+<div class="d-flex justify-content-between">
+    <div class="post-grid">
+        {% for instance in conformational_ensembles %}
+            <div class="post-grid-item">
+                <div class="button-bar">
+                    <form action="{% url 'file_storage:remove_conformational_ensemble_from_project' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="molecule_id" value="{{ instance.id }}">
+                    <input type="hidden" name="project_id" value="{{ project.id }}">
+                    <button type="submit" class="btn btn-primary">Remove</button>
+                    </form>
+                </div>
+                <article class="media content-section">
+                    <div class="media-body">
+                        <div class="post-image-container">
+                            <svg class="svg-image" viewBox="0 0 100 100">
+                                <image xlink:href="{{ instance.svg_url }}" width="100%" height="100%" />
+                            </svg>
+                        </div>
+                        <div>
+                            <a class='molecule-name' href="{% url 'file_storage:molecule_detail' instance.id %}">{{ instance.molecule_name }}</a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div id="myCard" class="card align-self-start h-auto" style="margin-left: 20px">
+        <div class="card-body">
+            <h5 class="card-title">Select Parameter</h5>
+            <button id="bond_angle" class="btn btn-secondary" style="margin: 0.25rem">Bond Angle</button>
+            <button id="dihedral_angle" class="btn btn-secondary" style="margin: 0.25rem">Dihedral Angle</button>
+            <button id="bond_length" class="btn btn-secondary" style="margin: 0.25rem">Bond Length</button>
+            <button id="nbo_charge" class="btn btn-secondary" style="margin: 0.25rem">NBO Charge</button>
+            <button id="burried_volume" class="btn btn-secondary" style="margin: 0.25rem">% Burried Volume</button>
+            <button id="carbon_nmr" class="btn btn-secondary" style="margin: 0.25rem">13C NMR</button>
+        </div>
+    </div>
+</div>
+
+{% if is_paginated %}
+    {% if page_obj.has_previous %}
+        <a class="btn btn-outline-info mb-4" href="?page=1">First</a>
+        <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+            <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+        <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}">Next</a>
+        <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+    {% endif %}
+{% endif %}
+
+<div id="dynamicForm" style="display: none;">
+    <form method="post">
+        {% csrf_token %}
+        <!-- Your form fields here -->
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+    $("#myCard").on("click", "#bond_angle, #dihedral_angle, #bond_length, #nbo_charge, #burried_volume, #carbon_nmr", function() {
+        var buttonId = this.id; // Get the id of the clicked button
+        
+        window.location.href = "/structures/parameters/" + buttonId + "/" + "{{ project.id }}" + "/";
+    });
+});
+</script>
+    
+{% endblock content %}

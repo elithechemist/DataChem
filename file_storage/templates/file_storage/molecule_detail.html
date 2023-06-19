@@ -1,0 +1,44 @@
+{% extends "file_storage/base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}
+    Molecule Detail
+{% endblock title %}
+
+{% block content %}
+    {% if svg_path %}
+        <div class="container-fluid text-center">
+            <object type="image/svg+xml" data="{{ svg_path }}" id="svgContent">Your browser does not support SVG</object>
+        </div>
+    {% else %}
+        <p>No SVG available for this molecule.</p>
+    {% endif %}
+
+    <div>
+        <br>
+        <br>
+    </div>
+
+    <div class="content-section">
+        <form enctype="multipart/form-data" method="POST">
+            {% csrf_token %}
+            <fieldset class="form-group">
+                <legend class="border-bottom">Extract Parameters</legend>
+                {{ form|crispy }}
+            </fieldset>
+            <div class="form-group">
+                <button class="btn btn-outline-info" type="submit">Submit</button>
+            </div>
+        </form>
+    </div>
+
+    <div>
+        <br>
+        <br>
+    </div>
+
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="{% static 'molecule_svg_clickable.js' %}"></script>
+    
+{% endblock content %}

@@ -1,0 +1,13 @@
+B32.log
+B34.log
+B37_1.log
+B37_2.log
+B37_3.log
+B44.log
+B44_1.log
+B5.log
+B5_1.log
+B6.log
+B6_1.log
+B8a.log
+B8b.log

@@ -1,0 +1,83 @@
+{% extends "file_storage/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+    {% if svg_path %}
+        <div class="container-fluid text-center">
+            <img class="rounded img-fluid" src="{{ svg_path }}" alt="BAD IMAGE">
+        </div>
+    {% else %}
+        <p>No SVG available for this molecule.</p>
+    {% endif %}
+
+    <div>
+        <br>
+        <br>
+    </div>
+
+    <div>
+        <table class="table table-striped table-hover bg-white">
+            <tr>
+              <th>Property</th>
+              <th>Value</th>
+            </tr>
+
+            {% if json_content.method %}
+            <tr>
+                <td>Method</td>
+                <td>{{ json_content.method }}</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.e %}
+            <tr>
+                <td>Energy</td>
+                <td>{{ json_content.e }} Hartrees</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.homo %}
+            <tr>
+                <td>HOMO energy</td>
+                <td>{{ json_content.homo }} Hartrees</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.lumo %}
+            <tr>
+                <td>LUMO energy</td>
+                <td>{{ json_content.lumo }} Hartrees</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.nbo %}
+            <tr>
+                <td>NBO Charge</td>
+                <td>{{ json_content.nbo }}</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.dist %}
+            <tr>
+                <td>Bond Length</td>
+                <td>{{ json_content.dist }} Å (atoms {{ json_content.dist_atom1 }}-{{ json_content.dist_atom2 }})</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.angle %}
+            <tr>
+                <td>Bond Angle</td>
+                <td>{{ json_content.angle }}° (atoms {{ json_content.angle_atom1 }}-{{ json_content.angle_atom2 }}-{{ json_content.angle_atom3 }})</td>
+            </tr>
+            {% endif %}
+
+            {% if json_content.dihedral %}
+            <tr>
+                <td>Dihedral Angle</td>
+                <td>{{ json_content.dihedral }}° (atoms {{ json_content.dihedral_atom1 }}-{{ json_content.dihedral_atom2 }}-{{ json_content.dihedral_atom3 }}-{{ json_content.dihedral_atom4 }})</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+{% endblock content %}

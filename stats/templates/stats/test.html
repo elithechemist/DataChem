@@ -1,0 +1,80 @@
+{% extends "file_storage/base.html" %}
+{% block content %}
+<style>
+    .container {
+      display: flex;
+      justify-content: flex-end; /* Adjust the horizontal alignment of the container */
+    }
+    .sidebar {
+      width: 800px;
+      height: 800px; 
+      background-color: #ffffff;
+      color: #333;
+      padding: 20px;
+      margin-right: 20px; /* Add a margin on the right side of the sidebar */
+    }
+    .main-content {
+      flex-grow: 1;
+      padding: 20px;
+    }
+    .form-group input[type="file"],
+    .form-group select {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .btn-outline-info {
+      color: #17a2b8;
+      border-color: #17a2b8;
+      padding: 10px 20px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.5s;
+    }
+    .btn-outline-info:hover {
+      background-color: #17a2b8;
+      color: white;
+    }
+</style>
+
+<div class="container">
+    <div class="sidebar">
+      <!-- your sidebar form here -->
+    </div>
+    <div class="main-content">
+      <h2>Main content</h2>
+      <p>This is your main content</p>
+      <div>
+        <form method="POST" action="{% url 'stats:upload' %}">
+        {% csrf_token %}
+        <table class="table table-striped table-hover bg-white">
+            <thead>
+            <tr>
+                <th>Molecule Index</th>
+                {% for _ in formset.0.values %}
+                <th>Data</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for form in formset %}
+                <tr>
+                <td>{{ form.instance.molecule }}</td>
+                {% for value in form.values.value %}
+                    <td>
+                    <input type="text" name="{{form.prefix}}-value_{{form.instance.molecule}}" value="{{ value }}">
+                    </td>
+                {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <input type="submit" value="Update Values">
+        </form>
+    </div>
+    </div>
+</div>
+{% endblock %}

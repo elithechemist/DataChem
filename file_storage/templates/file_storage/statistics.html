@@ -1,0 +1,36 @@
+{% extends "file_storage/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <div class="content-section rounded">
+        <h1>ChemStats Goals</h1>
+        <ol>
+            <li>Maximizing Efficiency</li>
+            <ul>
+                <li>Workflow centralized in a single location with a plug-and-play interface</li>
+                <li>Repetative task such as manually relabeling atomic indices are drastically simplified</li>
+            </ul>
+            <li>Minimizing Barrier to Entry</li>
+            <ul>
+                <li>New lab members can easily pick up the data science workflow with little to no guidance</li>
+                <li>New labs can begin using the data science workflow without the need for specialized tools and training</li>
+            </ul>
+            <li>Statistical Analysis Transparency</li>
+            <ul>
+                <li>Because data is analyzed at the same source, we can have confidence that the methods used are similar</li>
+                <li>Reviewers and readers can view the raw data on ChemStats.org and see how the fit was obtained</li>
+            </ul>
+            <li>Sharing Data</li>
+            <ul>
+                <li>With increased usage, the archive of molecular parameters will grow making it easy to perform quick analyses</li>
+                <li>Web-based interface makes it easy to share data with collaborators</li>
+                <li>The utility of the website will grow over time with increased usage</li>
+            </ul>
+            <li>Modularity</li>
+            <ul>
+                <li>The Django framework means any python programs can be easily integrated into the website</li>
+                <li>This will increase the impact factor of new statistical methods and parameters as it is trivial to try them with this web interface</li>
+            </ul>
+        </ol>
+    </div>
+{% endblock content %}
