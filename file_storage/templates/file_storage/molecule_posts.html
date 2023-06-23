@@ -1,5 +1,13 @@
 {% extends "file_storage/base.html" %}
 {% block content %}
+<!-- Search Bar -->
+<div class="search-bar">
+  <form method="get" action="{% url 'file_storage:home' %}">
+      <input type="text" name="q" placeholder="Search...">
+      <input type="submit" value="Search">
+  </form>
+</div>
+
 <div class="post-grid">
     {% for instance in conformers %}
         <div class="post-grid-item">

@@ -56,9 +56,6 @@ ids_processed = []
 
 # Iterate through each row in the Excel file
 for index, row in data.iterrows():
-    if(index != 244):
-        continue
-    
     # Extract the ID from the first Excel file and pad it with zeros
     ensemble_id = row['ID']
     print(f"On ensemble ID: {ensemble_id}")

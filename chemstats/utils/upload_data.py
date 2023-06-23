@@ -77,12 +77,12 @@ for sheet, project_name in zip(sheets, project_names):
                 variant = "_".join(split_col[1:-1])
 
                 logging.info(f"Group: {group}, Variant: {variant}, Project Name: {project_name}, Condensed Property Key: {cond_prop_key_name}")
-                # Parameter Type
-                param_type = ParameterType.objects.get(group=group, variant=variant, project_name=project_name)
-
-                # Condensed Property Key
-                cond_prop_key = CondensedPropertyKey.objects.get(name=cond_prop_key_name)
-
+                
+                # Parameter type
+                param_type, created = ParameterType.objects.get_or_create(group=group, variant=variant, project_name=project_name)
+                
+                # Condensed property key
+                cond_prop_key, created = CondensedPropertyKey.objects.get_or_create(name=cond_prop_key_name)
                 # Value
                 value = row[col]
 

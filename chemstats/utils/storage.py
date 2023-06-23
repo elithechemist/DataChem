@@ -88,7 +88,7 @@ def s3_molecule_store(file_name, content):
     return s3_key
 
 
-def s3_molecule_retrieve(file_name, as_path=True):
+def s3_molecule_retrieve(file_name, as_path=True, as_bytes=False):
     """
     Retrieves the actual file from S3 for a given molecule file based on its filename.
     """
@@ -117,13 +117,12 @@ def s3_molecule_retrieve(file_name, as_path=True):
     # Reset the file pointer to the beginning of the file-like object
     file_obj.seek(0)
 
-    # Read and decode the contents
-    contents = file_obj.read().decode('utf-8')
-
     if as_path:
-        return contents
+        return file_obj.read().decode('utf-8')
+    elif as_bytes:
+        return file_obj.read()
     else:
-        return contents
+        return file_obj.read().decode('utf-8')
 
 
 def s3_profile_image_retrieve(file_name, as_path=True):
@@ -152,6 +151,7 @@ def s3_profile_image_retrieve(file_name, as_path=True):
         return file_obj
     else:
         return file_obj.read()
+
 
 def s3_profile_image_store(file_name, image):
     """
@@ -196,7 +196,31 @@ def s3_get_random_default_image():
         print(f"An error occurred while fetching a random default image from S3: {e}")
         return None
 
-def s3_generate_presigned_url(file_name):
+
+def s3_temp_store(file_name, content):
+    """
+    Uploads a temporary file to S3, organizing it into a 'temp' directory.
+    
+    EXAMPLE USAGE:
+    file_name = "temporary_plot.png"
+    content = open("path_to_file", "rb").read()  # Some binary content
+    s3_temp_store(file_name, content)  # Content must be bytes
+    """
+    # Convert content to bytes if it's not already
+    if not isinstance(content, bytes):
+        content = content.encode()
+
+    # Create an in-memory bytes buffer
+    in_memory_file = io.BytesIO(content)
+    
+    # Upload the in-memory file to the 'temp' directory in S3
+    s3_key = f'media/temp/{file_name}'
+    s3_client.upload_fileobj(in_memory_file, settings.AWS_STORAGE_BUCKET_NAME, s3_key)
+
+    return s3_key
+
+
+def s3_generate_presigned_url(file_name, as_temp=False):
     """
     Generate a presigned URL for the file stored in S3.
     """
@@ -204,13 +228,18 @@ def s3_generate_presigned_url(file_name):
     molecule_id, file_extension = file_name.split('.', 1)
 
     if file_extension == 'svg':
-        file_type_directory = 'svg_files'
+        file_type_directory = 'molecules/svg_files'
+    elif as_temp:
+        file_type_directory = 'temp'
     else:
         raise ValueError(f"Unsupported file type for the file: {file_name}. Only .SVG files are supported for generating pre-signed URL from the Amazon S3 bucket.")
 
-    molecule_subpath = __get_molecule_subpath(molecule_id, file_extension)
+    if as_temp:
+        subpath = file_name
+    else:
+        subpath = __get_molecule_subpath(molecule_id, file_extension)
     
-    s3_key = f'media/molecules/{file_type_directory}/{molecule_subpath}'
+    s3_key = f'media/{file_type_directory}/{subpath}'
     
     # Generate a presigned URL for the S3 object
     # Note: The following line is removed as s3_client has been defined at the beginning of this module

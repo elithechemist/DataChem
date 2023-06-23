@@ -1,10 +1,265 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Regression Plot</title>
-</head>
-<body>
-    <img src="{{ image_path }}" alt="Regression Plot">
-</body>
-</html>
+{% extends "file_storage/base.html" %}
+{% load static %}
+{% block content %}
+    <style>
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            flex-basis: 25%;
+            flex-grow: 1;
+            background-color: #f0f0f0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-rows: 1fr auto;
+            grid-template-areas:
+                "image"
+                "controls";
+            padding: 20px;
+        }
+
+        .image-container {
+            grid-area: image;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: white;
+            min-height: 100px;
+            min-width: 100px;
+            border: 1px solid #ccc;
+        }
+
+        .image-controls {
+            grid-area: controls;
+            display: flex;
+            justify-content: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* Add custom styling for the form */
+        .custom-form {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .form-group {
+            display: flex;
+            margin: 10px 0;
+        }
+
+        .form-group label {
+            margin-right: 10px;
+        }
+
+        #loading img {
+            width: 25%;
+            height: auto;
+            position: center;
+        }
+    </style>
+
+    <div class="container"> 
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Image container -->
+            <div class="image-container">
+                <img id="regression-image" src="" alt="Regression Plot" style="display: none;">
+                <div id="loading" style="display: none;">
+                    <img src="{% static 'loading.gif' %}" alt="Loading..."> <!-- Use a loading gif -->
+                </div>
+            </div>
+            <!-- Controls for image -->
+            <div class="image-controls">
+                <button onclick="previousImage()">Previous</button>
+                <button onclick="nextImage()">Next</button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h5>Projects</h5>
+            <!-- Update the form to use the custom class -->
+            <form id="regression-form" class="custom-form">
+                <fieldset>
+                
+                <!-- Form Name -->
+                <legend>Form Name</legend>
+                
+                <!-- Multiple Checkboxes (inline) -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="checkboxes">Inline Checkboxes</label>
+                  <div class="col-md-4">
+                    <label class="checkbox-inline" for="checkboxes-0">
+                      <input type="checkbox" name="checkboxes" id="checkboxes-0" value="Include Cross Terms">
+                      Include Cross Terms
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Button Drop Down -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="buttondropdown">Button Drop Down</label>
+                  <div class="col-md-4">
+                    <div class="input-group">
+                      <input id="buttondropdown" name="buttondropdown" class="form-control" placeholder="Validation Set Ratio" type="text">
+                      <div class="input-group-btn">
+                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                          Methods
+                          <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right">
+                          <li><a href="#">Random</a></li>
+                          <li><a href="#">Linear</a></li>
+                          <li><a href="#">KL</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Multiple Checkboxes (inline) -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="checkboxes">Transform Y</label>
+                  <div class="col-md-4">
+                    <label class="checkbox-inline" for="checkboxes-0">
+                      <input type="checkbox" name="checkboxes" id="checkboxes-0" value="None">
+                      None
+                    </label>
+                    <label class="checkbox-inline" for="checkboxes-1">
+                      <input type="checkbox" name="checkboxes" id="checkboxes-1" value="Natural Log">
+                      Natural Log
+                    </label>
+                    <label class="checkbox-inline" for="checkboxes-2">
+                      <input type="checkbox" name="checkboxes" id="checkboxes-2" value="Absolute Value">
+                      Absolute Value
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Text input-->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="textinput">Number of Candidates</label>  
+                  <div class="col-md-4">
+                  <input id="textinput" name="textinput" type="text" placeholder="20" class="form-control input-md">
+                  <span class="help-block">help</span>  
+                  </div>
+                </div>
+                
+                <!-- Text input-->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="textinput">Number of Steps</label>  
+                  <div class="col-md-4">
+                  <input id="textinput" name="textinput" type="text" placeholder="3" class="form-control input-md">
+                  <span class="help-block">help</span>  
+                  </div>
+                </div>
+                
+                <!-- Button -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="singlebutton">Perform MLR</label>
+                  <div class="col-md-4">
+                    <button type="submit" id="singlebutton" name="singlebutton" class="btn btn-primary">Start</button>
+                  </div>
+                </div>
+                
+                </fieldset>
+                </form>                
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("regression-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            performRegression(event);  // Add the event parameter
+        });
+    
+        let imageUrls = [];
+        let currentIndex = 0;
+    
+        function performRegression(event) {
+            event.preventDefault();
+            
+            // Show loading animation
+            document.getElementById("loading").style.display = "block";
+            
+            // Make the fetch request to perform regression
+            fetch("{% url 'stats:perform_regression' %}", {
+                method: 'POST', // Specify the HTTP method as POST
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') // Include the CSRF token if required
+                },
+                body: JSON.stringify({/* Your data to be sent in the request body if needed */})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                imageUrls = data.urls; // Update this line to access the correct property in the response data
+                // Hide loading animation
+                document.getElementById("loading").style.display = "none";
+                
+                // Show the first image
+                if (imageUrls.length > 0) {
+                    document.getElementById("regression-image").src = imageUrls[0];
+                    document.getElementById("regression-image").style.display = "block";
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Hide loading animation in case of error
+                document.getElementById("loading").style.display = "none";
+            });
+        }
+
+        // Helper function to get a cookie by name
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function previousImage() {
+            currentIndex--;
+            if (currentIndex < 0) {
+                currentIndex = imageUrls.length - 1;
+            }
+            document.getElementById("regression-image").src = imageUrls[currentIndex];
+        }
+
+        function nextImage() {
+            currentIndex++;
+            if (currentIndex >= imageUrls.length) {
+                currentIndex = 0;
+            }
+            document.getElementById("regression-image").src = imageUrls[currentIndex];
+        }
+    </script>
+{% endblock %}

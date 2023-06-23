@@ -1,3 +1,4 @@
+import re
 import uuid
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -22,6 +23,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from chemstats.utils.storage import s3_generate_presigned_url, s3_molecule_store
 import boto3
 import os, time
+from django.db.models import Q
+from django.db.models.functions import Length
+from django.contrib.postgres.search import TrigramSimilarity
+from django.contrib.postgres.search import SearchVector
+from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
+from django.contrib.postgres.lookups import Unaccent
+from django.db.models import F
 
 
 def test(request):
@@ -74,6 +82,52 @@ class MoleculeListView(ListView):
     ordering = ['-date']
     paginate_by = 200
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Get the query parameter
+        query = self.request.GET.get('q')
+        if query:
+            # Normalize query
+            query = query.strip()
+            print(query)
+
+            # Check if query is CAS number
+            if re.match(r'^\d+-\d+-\d+$', query.replace(' ', '')):
+                # Exact Match for CAS number (search within JSON-like structure)
+                cas_query = f'"{query.replace(" ", "")}"'  # add double quotes for exact match within the array-like structure
+                queryset = queryset.filter(cas_ids__contains=cas_query)
+
+
+            # Check if query is Database ID (e.g. KRAKEN-0000001, 00000001, 1, 001)
+            elif re.match(r'^(\D*\d+)$', query):
+                # Extract the numerical part
+                numerical_part = re.sub(r'\D', '', query)
+                # Convert to appropriate form KRAKEN-XXXXXXXX
+                database_id = f'KRAKEN_{numerical_part.zfill(8)}'
+                # Match database_id
+                queryset = queryset.filter(database_id=database_id)
+
+            # Match similar names or smiles using trigram similarity (PostgreSQL)
+            else:
+                # Set a threshold for similarity
+                SIMILARITY_THRESHOLD = 0.1
+
+                queryset = queryset.annotate(
+                    similarity_name=TrigramSimilarity(Unaccent('molecule_name'), query),
+                    similarity_smiles=TrigramSimilarity(Unaccent('smiles'), query),
+                    search_vector=SearchVector('molecule_name', 'smiles')
+                ).filter(
+                    Q(similarity_name__gte=SIMILARITY_THRESHOLD) |
+                    Q(similarity_smiles__gte=SIMILARITY_THRESHOLD) |
+                    Q(search_vector=query)
+                ).annotate(
+                    rank=F('similarity_name') + F('similarity_smiles')
+                ).order_by('-rank')[:5]  # Limiting the results to top 5
+
+        print(queryset)
+        return queryset
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['projects'] = Project.objects.all()  # or apply some filter if needed
@@ -283,3 +337,6 @@ def parameter_view(request, parameter_name, project_id):
     molecules = project.molecules.all()
 
     return render(request, 'file_storage/parameters.html', {'parameter_name': parameter_name, 'project_id': project_id, molecules: 'molecules'})
+
+def libraries_view(request):
+    return render(request, 'file_storage/libraries.html')

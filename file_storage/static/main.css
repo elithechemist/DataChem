@@ -112,6 +112,40 @@ body {
     max-height: 250px; /* Set the maximum height of the container */
     margin: 0 auto; /* Center the container horizontally */
   }
+
+  .library-post-grid {
+    max-width: 1500px;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dividing the main container into two columns, left and right */
+    grid-template-rows: auto;
+    grid-column-gap: 20px;
+  }
+  
+  .left-section {
+    display: grid;
+    grid-template-rows: 1fr 1fr; /* Dividing the left column into two rows, top and bottom */
+  }
+  
+  .library-post-grid-item {
+    border: 1px solid #000000;
+    border-radius: 10px;
+    background-color: rgb(255, 255, 255);
+    border: 1px solid rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    font-size: 20px;
+    text-align: center;
+  }
+  
+  .library-post-image-container {
+    max-width: 250px;
+    max-height: 250px;
+    margin: 0 auto;
+  }
+  
+  .library-post-image {
+    max-width: 100%;
+    max-height: 100%;
+  }
   
   .svg-image {
     max-width: 100%; /* Set the maximum width of the SVG image to 100% of the container */

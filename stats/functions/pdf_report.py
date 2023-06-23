@@ -5,18 +5,21 @@ from reportlab.lib.units import cm
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 from django.core.files.storage import default_storage
+from chemstats.utils.storage import s3_molecule_retrieve
 from PIL import Image
 from django.conf import settings
 import os
 
 
 def draw_svg_on_canvas(canvas, svg_file_url, x, y, width, height):
-    # Construct the absolute path to the SVG file
-    svg_file_path = os.path.join(settings.BASE_DIR, svg_file_url.strip("/"))
+    # SVG content bytes
+    svg_content_bytes = s3_molecule_retrieve(svg_file_url, as_path=False, as_bytes=True)
+    
+    # Convert the SVG content bytes into a file-like object
+    svg_file_like = io.BytesIO(svg_content_bytes)
 
-    # Open the SVG file
-    with open(svg_file_path, 'r') as f:
-        drawing = svg2rlg(f)
+    # Read the SVG file-like object
+    drawing = svg2rlg(svg_file_like)
 
     # Calculate the scaling factors to fit the image within the available width and height
     scale_x = width / drawing.width
@@ -93,7 +96,31 @@ def generate_pdf(project_id):
         # Draw the molecule name
         c.setFont('Helvetica', 8)
         c.setFillColor('black')  # Set the font color to black
-        c.drawString(9 * cm, entry_y + 0.25 * cm, entry.conformational_ensemble.molecule_name)  # Adjust the y coordinate for spacing
+
+        # Handle long molecule names
+        max_chars_per_line = 40
+        molecule_name = entry.conformational_ensemble.molecule_name
+        chars_written = 0
+        line_number = 0
+
+        while chars_written < len(molecule_name):
+            start = chars_written
+            end = start + max_chars_per_line
+            fragment = molecule_name[start:end]
+
+            # Add dash if needed
+            if end < len(molecule_name) and not fragment.endswith('-'):
+                fragment += '-'
+
+            # Draw the fragment
+            c.drawString(9 * cm, entry_y + 0.25 * cm - (0.5 * cm * line_number), fragment)
+
+            # Update the counters
+            chars_written += max_chars_per_line
+            line_number += 1
+
+        # Draw the database ID
+        c.drawString(9 * cm, entry_y - 1.7 * cm, entry.conformational_ensemble.database_id)
 
         # Draw a solid line below the entry
         c.setLineWidth(0.5)

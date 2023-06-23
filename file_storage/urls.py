@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import create_molecule, statistics, add_conformational_ensemble_to_project, remove_conformational_ensemble_from_project, get_conformational_ensembles_in_project, delete_project, view_project
+from .views import create_molecule, libraries_view, statistics, add_conformational_ensemble_to_project, remove_conformational_ensemble_from_project, get_conformational_ensembles_in_project, delete_project, view_project
 from .views import MoleculeListView, MoleculeDetailView, MoleculeDetailViewRedirect, Projects
 
 app_name = 'file_storage'
@@ -17,4 +17,5 @@ urlpatterns = [
     path('add_conformational_ensemble_to_project/', add_conformational_ensemble_to_project, name='add_conformational_ensemble_to_project'),
     path('remove_conformational_ensemble_from_project/', remove_conformational_ensemble_from_project, name='remove_conformational_ensemble_from_project'),
     path('parameters/', include('file_storage.parameter_urls')),
+    path('libraries/', libraries_view, name='libraries'),
 ]

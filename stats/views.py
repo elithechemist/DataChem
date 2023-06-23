@@ -1,6 +1,7 @@
 import json
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.views import View
 
 from stats.functions.mlr import perform_regression_and_save_plot
 from .forms import UploadFileForm
@@ -202,7 +203,7 @@ def update_values(request, project_id=None):
 
     return JsonResponse({'status': 'success'})
 
-def download_project_pdf(request):
+def download_project_pdf(request, project_id=None):
     # Fetch the project instance
     project = Project.objects.get(pk=project_id)
     
@@ -271,9 +272,10 @@ def remove_column(request, project_id):
         return JsonResponse({'success': False, 'error': str(e)})
     
 def regression_view(request):
-    # Call the function to perform regression and save the plot
-    image_path = perform_regression_and_save_plot()
-    print(image_path)
+    return render(request, 'stats/mlr.html')
 
-    # Pass the image path to the template
-    return render(request, 'stats/mlr.html', {'image_path': image_path})
+class PerformRegressionView(View):
+    def post(self, request):
+        urls = perform_regression_and_save_plot()
+        print("URLS:" + str(urls))
+        return JsonResponse({'urls': urls})
