@@ -22,6 +22,8 @@ from django.core import serializers
 from django.views.decorators.csrf import csrf_exempt
 import numpy as np
 from django.views.decorators.http import require_POST
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import TemplateView
 
 def upload_file(request):
     if request.method == 'POST':
@@ -271,11 +273,40 @@ def remove_column(request, project_id):
         # Return a JSON response indicating failure
         return JsonResponse({'success': False, 'error': str(e)})
     
-def regression_view(request):
-    return render(request, 'stats/mlr.html')
+class RegressionView(LoginRequiredMixin, TemplateView):
+    template_name = 'stats/mlr.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        projects = Project.objects.filter(user=self.request.user)
+        context['projects'] = projects
+        return context
 
 class PerformRegressionView(View):
     def post(self, request):
-        urls = perform_regression_and_save_plot()
-        print("URLS:" + str(urls))
-        return JsonResponse({'urls': urls})
+        # Decode JSON request body into python data structure
+        data = json.loads(request.body)
+        
+        # Extract parameters from request data
+        project = Project.objects.get(pk=data.get('select_project', None))
+        has_interaction_terms = data.get('interaction_terms', False)
+        test_ratio = float(data.get('test_ratio', 1))
+        split_method = data.get('split_method', 'random')
+        n_models = int(data.get('n_models', 1))
+        n_iterations = int(data.get('n_iterations', 1))
+        collin_criteria = float(data.get('collin_criteria', 1))
+        max_parameters = int(data.get('max_parameters', 1))
+
+        print("PROJECT: " + str(project))
+        print("HAS INTERACTION_TERMS: " + str(has_interaction_terms))
+        print("TEST_RATIO: " + str(test_ratio))
+        print("SPLIT_METHOD: " + str(split_method))
+        print("N_MODELS: " + str(n_models))
+        print("N_ITERATIONS: " + str(n_iterations))
+        print("COLLIN_CRITERIA: " + str(collin_criteria))
+        print("MAX_PARAMETERS: " + str(max_parameters))
+
+        # Call the perform_regression_and_save_plot function with parameters
+        presigned_urls, equation_strings, training_r2_scores, q2_scores, four_fold_r2_scores, validation_r2_scores, mean_absolute_errors = perform_regression_and_save_plot(project, has_interaction_terms, test_ratio, split_method, n_models, n_iterations, collin_criteria, max_parameters)
+
+        return JsonResponse({'urls': presigned_urls, 'equations': equation_strings, 'training_r2_scores': training_r2_scores, 'q2_scores': q2_scores, 'four_fold_r2_scores': four_fold_r2_scores, 'validation_r2_scores': validation_r2_scores, 'mean_absolute_errors': mean_absolute_errors})

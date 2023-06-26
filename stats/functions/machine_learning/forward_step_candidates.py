@@ -28,12 +28,8 @@ reg = LinearRegression()
 n_steps = 3        
 n_candidates = 2
 
-# Add global counters
-step_par_count = 0
-q2_par_count = 0
 
 def filter_unique(scores,step):
-    print("IN FILTER UNIQUE")
     models_sorted = sorted(scores,key=scores.get,reverse=True)
     refmodel = 0
     while len(models_sorted[refmodel]) != step: # use the best model from the current step as reference
@@ -54,16 +50,12 @@ def filter_unique(scores,step):
     return(uniquemods)
 
 def corrmap_par(t1,t2,data):
-    print("IN CORRMAP PAR")
     i,j = data[t1].values.reshape(-1,1),data[t2].values.reshape(-1,1)
     t1t2corr = LinearRegression().fit(i,j)
     score = t1t2corr.score(i,j)
     return(t1,t2,score)
 
 def step_par(terms,data,response,reg,usescore='r2'):
-    global step_par_count
-    step_par_count += 1
-    print(step_par_count)
     #todo: implement checks for p-value of added term
     terms = tuple(terms)
     model = Model(terms,data.loc[:,terms],data[response],reg,usescore) 
@@ -75,29 +67,12 @@ def step_par(terms,data,response,reg,usescore='r2'):
     return(terms,model,score,response)
 
 def q2_par(terms,X,y,reg):
-    global q2_par_count
-    q2_par_count += 1
-    print(q2_par_count)
     cand_q2 = loo.q2_df(X,y,reg)[0]
     return(terms,cand_q2)
 
 def ForwardStep_py(data,response,n_steps=3,n_candidates=30,reg=LinearRegression(),collin_criteria=0.5):
-    global step_par_count, q2_par_count
     start_time = time.time()
     pool = Parallel(n_jobs=nproc,verbose=0)
-
-    # Calculate the expected total number of times step_par and q2_par will be called
-    features = list(data.columns)
-    features.remove(response)
-    # Estimating total calls for step_par based on combinations
-    estimated_step_par_calls = sum([len(list(itertools.combinations(features, i))) for i in range(1, n_steps + 1)])
-    
-    # Estimating total calls for q2_par based on n_candidates
-    estimated_q2_par_calls = n_candidates * n_steps
-    
-    # Total expected calls
-    total_calls = estimated_step_par_calls + estimated_q2_par_calls
-    print(f"EST: Total calls to step_par: {estimated_step_par_calls}")
 
     # data: pd.dataframe with all features and a response column
     # it is advised to have the column titles as x1...xn
@@ -114,7 +89,6 @@ def ForwardStep_py(data,response,n_steps=3,n_candidates=30,reg=LinearRegression(
 
     for step in [1,2]:
         print("Step " + str(step))
-        step_start_time = time.time()
         if step == 1:
             todo = [(feature,) for feature in features]
         if step == 2:
@@ -126,9 +100,6 @@ def ForwardStep_py(data,response,n_steps=3,n_candidates=30,reg=LinearRegression(
                 continue
             models[results[0]] = results[1]
             scores_r2[results[0]] = results[2]
-
-        step_end_time = time.time()
-        print('Step {} done. Time taken (seconds): {:.4f}'.format(step, step_end_time - step_start_time))
 
     # calculate Q^2 only for the highest-correlating models to save time
     candidates_r2 = tuple(sorted(scores_r2,key=scores_r2.get,reverse=True)[:min([2*(len(features)+n_candidates),len(scores_r2)])])
@@ -149,7 +120,6 @@ def ForwardStep_py(data,response,n_steps=3,n_candidates=30,reg=LinearRegression(
     # print(len(models.keys()))
         
     while step < n_steps:
-        step_start_time = time.time()
         step += 1
         print("Step " +str(step))
         # add 1 term
@@ -206,8 +176,6 @@ def ForwardStep_py(data,response,n_steps=3,n_candidates=30,reg=LinearRegression(
         cands_b = filter_unique(scores_q2,step)
         candidates = tuple(set(cands_a+cands_b))
         # print(len(cands_a),len(cands_b),len(candidates))
-        step_end_time = time.time()
-        print('Step {} done. Time taken (seconds): {:.4f}'.format(step, step_end_time - step_start_time))
 
     sortedmodels = sorted(scores_q2,key=scores_q2.get,reverse=True)
     results_d = {
@@ -218,6 +186,4 @@ def ForwardStep_py(data,response,n_steps=3,n_candidates=30,reg=LinearRegression(
     }
     results = pd.DataFrame(results_d)        
     print('Done. Time taken (minutes): %0.2f' %((time.time()-start_time)/60))
-    print("Total calls to step_par: ",step_par_count)
-    print("Total calls to q2_par: ",q2_par_count)
     return(results,models,scores_q2,sortedmodels,candidates)        

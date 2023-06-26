@@ -6,15 +6,15 @@ from stats.functions.machine_learning.forward_step_candidates import ForwardStep
 import stats.functions.machine_learning.loo_q2 as loo
 from stats.functions.machine_learning.r2_val import r2_val
 
-def forward_step_candidates(X_train, y_train, n_steps=3, n_candidates=20, collin_criteria=0.5):
+def forward_step_candidates(X_train, y_train, n_steps, n_candidates, collin_criteria):
     # Combining the features and response in a DataFrame
     df = pd.DataFrame(np.hstack((X_train, y_train[:, None])))
     newcols = ["x" + str(i + 1) for i in range(X_train.shape[1])]
     df.columns = newcols + ["y"]
-    
+
     # Calling the ForwardStep_py function
-    results, models, scores, sortedmodels, candidates = fsc(df, 'y',
-                            n_steps=n_steps, n_candidates=n_candidates, collin_criteria=collin_criteria)
+    results, models, scores, sortedmodels, candidates = fsc(df,'y',
+                    n_steps=n_steps, n_candidates=n_candidates, collin_criteria=collin_criteria)
     
     # List to store fitted models and selected features
     fitted_models = []

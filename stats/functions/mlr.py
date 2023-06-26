@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.linear_model import LinearRegression, Ridge
 from chemstats.utils.storage import s3_generate_presigned_url, s3_temp_store
 from stats.functions.machine_learning.mlr_forward_stepwise_selection import forward_step_candidates, find_best_models
@@ -14,14 +15,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from stats.functions.machine_learning.data_preparation import data_preparation
 from stats.functions.machine_learning.cross_and_interaction_terms import cross_and_interaction_terms
 
-def perform_regression_and_save_plot():
+def perform_regression_and_save_plot(project, has_interaction_terms, test_ratio, split_method, n_models, n_iterations, collin_criteria, max_parameters):
     try:
-        user_experimental_responses = ExperimentalResponse.objects.filter(user__username='chemstats_admin')
-        
-        if not user_experimental_responses.exists():
-            raise ValueError("No experimental response found for the user.")
-
-        experimental_response = user_experimental_responses.first()
+        experimental_response = ExperimentalResponse.objects.get(user__username='chemstats_admin', project=project)
 
         # Collect y values and X values
         y = []
@@ -35,10 +31,10 @@ def perform_regression_and_save_plot():
             if statistics:
                 parameters = statistics.parameters.all()
                 x_values = [param.value for param in parameters]
-                # Collect labels if not collected yet
+                # Collect labels if not collected yet__
                 if not X_labels:
-                    X_labels = [param.parameter_type for param in parameters]
-                # Check if x_values has any missing valu\
+                    X_labels = [str(param.parameter_type.group) + "_" + str(param.parameter_type.variant) + "_" + str(param.condensed_property_key) for param in parameters]
+                # Check if x_values has any missing value
                 if None not in x_values:
                     X.append(x_values)
                     y.append(response_entry.values[0])  # Assuming values is a list and we take the first value
@@ -55,6 +51,10 @@ def perform_regression_and_save_plot():
             # Filter y accordingly
             y = [y_val for x_values, y_val in zip(X, y) if len(x_values) == most_common_length]
 
+
+        print("X_Lables: " + str(X_labels))
+        print("XLABEL1" + str(X_labels[1]))
+
         # Convert to numpy arrays
         X = np.array(X)
         y = np.array(y)
@@ -62,30 +62,76 @@ def perform_regression_and_save_plot():
         print(y)
 
         # Split the data into training/testing sets
-        X_train, X_test, y_train, y_test = data_preparation(X, y, test_ratio=0.33, X_labels=X_labels, split_method='ks', random_state=42)
-
-        # Parameters for forward_step_candidates function
-        n_steps = 3
-        n_candidates = 20
-        collin_criteria = 0.5
+        X_train, X_test, y_train, y_test = data_preparation(X, y, test_ratio=test_ratio, X_labels=X_labels, split_method=split_method, random_state=42)
 
         # Generate candidate models using forward_step_candidates
+        # Parameters for forward_step_candidates function
+        n_steps = n_iterations
+        n_candidates = n_models
+        collin_criteria = 0.5
+
+        print("n_steps: " + str(n_steps))
+        print("n_candidates: " + str(n_candidates))
+        print("collin_criteria: " + str(collin_criteria))
+
         fitted_models, selected_features_list = forward_step_candidates(X_train, y_train, n_steps, n_candidates, collin_criteria)
 
         # Find the best models
-        n_best_models = 20  # Get all models
+        n_best_models = 2  # Get all models
         best_models, selected_features, predictions, metrics = find_best_models(fitted_models, selected_features_list, X_train, X_test, y_train, y_test, n_best_models)
         
-        # Placeholder for presigned urls
+        # (2) Initialize lists to store the required information
         presigned_urls = []
+        equation_strings = []  # <-- (2.1) For storing equation strings
+        training_r2_scores = []  # <-- (2.2) For storing training R2 scores
+        q2_scores = []  # <-- (2.3) For storing Q2 scores
+        four_fold_r2_scores = []  # <-- (2.4) For storing 4-fold cross-validation R2 scores
+        validation_r2_scores = []  # <-- (2.5) For storing validation R2 scores
+        mean_absolute_errors = []  # <-- (2.6) For storing Mean Absolute Errors (MAEs)
 
         # Iterate over each model to generate plots
         for idx, model in enumerate(best_models):
             # Extract the predictions for this model
             y_pred_train, y_pred_test = predictions[idx]
+            print("y_pred_train: " + str(y_pred_train))
 
             # Compute R2 and Q2 scores
             trainr2, q2, testr2, model_quality = metrics[idx]
+            print("trainr2: " + str(trainr2))
+
+            # (3) Composing the equation string and computing additional metrics
+            coeffs = model.coef_
+            print("coeffs: " + str(coeffs))
+
+            # Composing the equation string
+            equation_string = "y_pre = {:.2f}".format(model.intercept_)
+            print("equation_string: " + str(equation_string))
+            
+            # Iterating through coefficients and feature indices
+            for coef, feature_index in zip(coeffs, selected_features[idx]):
+                # Retrieve the parameter_type object using the feature index
+                print("Feature index: " + str(feature_index))
+                parameter_type = X_labels[feature_index]
+                print("Parameter type: " + str(parameter_type))
+                
+                # Add term to the equation string
+                equation_string += " + {:.2f} {}".format(coef, parameter_type)
+            
+            # Append equation string
+            equation_strings.append(equation_string)  # <-- (3.1) Append equation string
+            
+            # 4-fold cross-validation R2 score
+            four_fold_r2 = np.mean(cross_val_score(model, X_train, y_train, cv=4))  # <-- (3.2) Compute 4-fold R2
+            four_fold_r2_scores.append(four_fold_r2)  # Append 4-fold R2 score
+            
+            # Compute Mean Absolute Error (MAE)
+            mae = mean_absolute_error(y_test, y_pred_test)  # <-- (3.3) Compute MAE
+            mean_absolute_errors.append(mae)  # Append MAE
+            
+            # Append scores
+            training_r2_scores.append(trainr2)  # <-- (3.4) Append training R2 score
+            q2_scores.append(q2)  # <-- (3.5) Append Q2 score
+            validation_r2_scores.append(testr2)  # <-- (3.6) Append validation R2 score
             
             # Plot
             plt.scatter(y_train, y_pred_train, color='blue', label="Training data")
@@ -123,7 +169,8 @@ def perform_regression_and_save_plot():
             presigned_urls.append(presigned_url)
         
         # Returning the array of pre-signed URLs for the plot images
-        return presigned_urls
+        print("FINISHED")
+        return presigned_urls, equation_strings, training_r2_scores, q2_scores, four_fold_r2_scores, validation_r2_scores, mean_absolute_errors  # <-- (4) Modified return statement
 
     except ObjectDoesNotExist:
         return "User chemstats_admin not found"
